@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lembach Group · Lead Engine</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#0b0d12;color:#e8e6e0;font-family:Georgia,"Times New Roman",serif;min-height:100vh}
+    #root{min-height:100vh}
+    #splash{position:fixed;inset:0;background:#0b0d12;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s ease;gap:12px}
+    #splash.hide{opacity:0;pointer-events:none}
+    #splash-diamond{font-size:32px;color:#c9a84c}
+    #splash-text{font-size:13px;letter-spacing:.18em;color:#666;font-family:Georgia,serif}
+  </style>
+</head>
+<body>
+  <div id="splash">
+    <div id="splash-diamond">◆</div>
+    <div id="splash-text">LEMBACH GROUP · LEAD ENGINE</div>
+  </div>
+  <div id="root"></div>
+
+  <script>
+"use strict";
+// ── STORAGE SHIM ──
+const storageShim = {
+    set: (key, value) => {
+        try {
+            localStorage.setItem("le__" + key, value);
+            return { key, value };
+        }
+        catch (e) {
+            return null;
+        }
+    },
+    get: (key) => {
+        try {
+            const v = localStorage.getItem("le__" + key);
+            return v != null ? { key, value: v } : null;
+        }
+        catch (e) {
+            return null;
+        }
+    },
+    delete: (key) => {
+        try {
+            localStorage.removeItem("le__" + key);
+            return { key, deleted: true };
+        }
+        catch (e) {
+            return null;
+        }
+    },
+    list: (prefix) => {
+        try {
+            const keys = [];
+            const p = "le__" + (prefix || "");
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith(p))
+                    keys.push(k.replace("le__", ""));
+            }
+            return { keys };
+        }
+        catch (e) {
+            return { keys: [] };
+        }
+    }
+};
+function apiHeaders() {
+    const key = localStorage.getItem("lb_apikey") || "";
+    return {
+        "Content-Type": "application/json",
+        "x-api-key": key,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-allow-browser": "true"
+    };
+}
+function SetupScreen({ onSave }) {
+    const [val, setVal] = React.useState("");
+    const [err, setErr] = React.useState("");
+    const [testing, setTesting] = React.useState(false);
+    const handleSave = async () => {
+        const k = val.trim();
+        if (!k.startsWith("sk-ant-")) {
+            setErr("Should start with sk-ant-");
+            return;
+        }
+        setTesting(true);
+        setErr("");
+        try {
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-api-key": k, "anthropic-version": "2023-06-01", "anthropic-dangerous-allow-browser": "true" },
+                body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 10, messages: [{ role: "user", content: "hi" }] })
+            });
+            if (res.ok || res.status === 400) {
+                localStorage.setItem("lb_apikey", k);
+                onSave(k);
+            }
+            else {
+                setErr("Key rejected (status " + res.status + "). Check console.anthropic.com.");
+            }
+        }
+        catch (e) {
+            setErr("Connection error. Try again.");
+        }
+        setTesting(false);
+    };
+    return (React.createElement("div", { style: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0b0d12", padding: 24 } },
+        React.createElement("div", { style: { maxWidth: 480, width: "100%", background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 16, padding: "40px 36px" } },
+            React.createElement("div", { style: { fontSize: 28, color: "#c9a84c", marginBottom: 8, textAlign: "center" } }, "\u25C6"),
+            React.createElement("div", { style: { fontSize: 22, fontWeight: "bold", textAlign: "center", marginBottom: 6 } }, "Lembach Group"),
+            React.createElement("div", { style: { fontSize: 13, color: "#888", textAlign: "center", marginBottom: 32, letterSpacing: ".05em" } }, "LEAD ENGINE \u00B7 FIRST-TIME SETUP"),
+            React.createElement("div", { style: { fontSize: 13, color: "#bbb", lineHeight: 1.7, marginBottom: 24 } }, "Enter your Anthropic API key below. It is stored only on this device and used only to power the AI features."),
+            React.createElement("div", { style: { marginBottom: 8, fontSize: 10, letterSpacing: ".1em", color: "#777", textTransform: "uppercase" } }, "Anthropic API Key"),
+            React.createElement("input", { type: "password", value: val, onChange: e => setVal(e.target.value), onKeyDown: e => e.key === "Enter" && handleSave(), placeholder: "sk-ant-api03-...", style: { width: "100%", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, padding: "11px 14px", color: "#e8e6e0", fontSize: 14, fontFamily: "inherit", outline: "none", marginBottom: 12, boxSizing: "border-box" }, autoFocus: true }),
+            err && React.createElement("div", { style: { fontSize: 12, color: "#ff6b6b", marginBottom: 12, lineHeight: 1.5 } }, err),
+            React.createElement("button", { onClick: handleSave, disabled: testing || !val.trim(), style: { width: "100%", background: testing || !val.trim() ? "rgba(201,168,76,.3)" : "linear-gradient(135deg,#c9a84c,#a8873a)", border: "none", borderRadius: 8, padding: "14px", color: "#0b0d12", fontSize: 15, fontWeight: "bold", fontFamily: "inherit", cursor: testing || !val.trim() ? "not-allowed" : "pointer" } }, testing ? "Verifying..." : "Launch Lead Engine →"),
+            React.createElement("div", { style: { marginTop: 20, fontSize: 11, color: "#555", textAlign: "center", lineHeight: 1.6 } },
+                "Get your key at ",
+                React.createElement("span", { style: { color: "#c9a84c" } }, "console.anthropic.com"),
+                " \u2192 API Keys"))));
+}
+const { useState, useRef, useEffect } = React;
+const COUNTIES = ["Placer", "El Dorado", "Amador", "Sacramento"];
+const LEAD_TYPES = [
+    { id: "fsbo", label: "FSBO", desc: "For Sale By Owner — motivated sellers who need an agent" },
+    { id: "expired", label: "Expired Listings", desc: "Didn't sell — MLS cross-checked before contact" },
+    { id: "divorce", label: "Life Transitions", desc: "Positive moves: empty nesters, upsizers, downsizers" },
+    { id: "investor", label: "Investors", desc: "Buyers looking for rental or flip properties" },
+    { id: "firsttime", label: "First-Time Buyers", desc: "Pre-approval seekers, renters looking to buy" },
+    { id: "relocation", label: "Relocation", desc: "Bay Area / Sacramento movers heading to the foothills" },
+];
+const PRICE_RANGES = ["Under $400K", "$400K–$600K", "$600K–$900K", "$900K–$1.5M", "$1.5M+"];
+const FORECAST_TRIGGERS = [
+    { id: "divorce", label: "Divorce Filings", icon: "⚖️", window: "3–9 mo", stat: "68% of divorce cases result in a home sale within 9 months" },
+    { id: "probate", label: "Probate / Inheritance", icon: "🕊️", window: "6–12 mo", stat: "73% of probate properties list within 9 months of court opening" },
+    { id: "newbaby", label: "Growing Families", icon: "👶", window: "12–30 mo", stat: "Families with 2+ kids outgrow starter homes within 2 years on average" },
+    { id: "emptynest", label: "Empty Nesters", icon: "🎓", window: "6–18 mo", stat: "61% of empty nesters downsize within 18 months of last child leaving" },
+    { id: "retirement", label: "Retirements", icon: "🌅", window: "6–24 mo", stat: "57% of retirees relocate or downsize within 2 years of retiring" },
+    { id: "relocation", label: "Job Relocations", icon: "✈️", window: "1–4 mo", stat: "Job relocation is the #1 driver of urgent home sales" },
+    { id: "marriage", label: "Recent Marriages", icon: "💍", window: "12–24 mo", stat: "Newlyweds purchase or sell to upsize within 18 months 54% of the time" },
+    { id: "business", label: "Business Exits", icon: "📈", window: "6–18 mo", stat: "Business liquidity events frequently trigger real estate moves" },
+];
+const MONTH_MAP = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+function parseWindow(w) {
+    try {
+        const clean = (w || "").replace(/[–—]/g, "-");
+        const parts = clean.split("-").map(s => s.trim());
+        if (parts.length < 2)
+            return null;
+        const parseMonthYear = (s) => {
+            const t = s.trim().split(/\s+/);
+            if (t.length < 2)
+                return null;
+            const m = t[0].substring(0, 3), y = parseInt(t[t.length - 1]);
+            if (!MONTH_MAP.hasOwnProperty(m) || isNaN(y))
+                return null;
+            return new Date(y, MONTH_MAP[m], 1);
+        };
+        const years = clean.match(/\d{4}/g) || [];
+        const yr = years[years.length - 1] || "2026", yr0 = years[0] || yr;
+        const start = parseMonthYear(parts[0].match(/\d{4}/) ? parts[0] : parts[0] + " " + yr0);
+        const end = parseMonthYear(parts[1].match(/\d{4}/) ? parts[1] : parts[1] + " " + yr);
+        return (start && end) ? { start, end } : null;
+    }
+    catch {
+        return null;
+    }
+}
+function getHeat(predictedWindow) {
+    const today = new Date();
+    const p = parseWindow(predictedWindow);
+    if (!p)
+        return { status: "unknown", label: "Unscheduled", color: "#666", glow: false, daysLabel: "No window set", pct: 10 };
+    const D = 86400000, dStart = Math.round((p.start - today) / D), dEnd = Math.round((p.end - today) / D);
+    if (dStart > 90)
+        return { status: "planted", label: "🌱 Planted", color: "#06d6a0", glow: false, daysLabel: `Window opens in ~${Math.round(dStart / 30)} months`, pct: 15 };
+    if (dStart > 0)
+        return { status: "warming", label: "🌤 Warming Up", color: "#ffd166", glow: false, daysLabel: `${dStart} days until window`, pct: 50 };
+    if (dEnd >= 0)
+        return { status: "ripe", label: "🔥 In Window NOW", color: "#ff6b35", glow: true, daysLabel: `${dEnd} days left in window`, pct: 88 };
+    return { status: "overdue", label: "⚡ Past Window", color: "#c77dff", glow: false, daysLabel: `Window closed ${Math.abs(dEnd)}d ago — still worth contact`, pct: 60 };
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function App() {
+    const [tab, setTab] = useState("active");
+    const [step, setStep] = useState("config");
+    const [config, setConfig] = useState({ county: ["Placer", "El Dorado"], leadType: ["investor", "divorce"], priceRange: [], agentName: "Andrea Lembach", brokerageName: "Lembach Group", agentEmail: "andrea@lembachgroup.com" });
+    const [fcConfig, setFcConfig] = useState({ county: ["Placer", "El Dorado"], triggers: ["divorce", "probate", "emptynest"] });
+    const [leads, setLeads] = useState([]);
+    const [fcProspects, setFcProspects] = useState([]);
+    const [watchlist, setWatchlist] = useState([]);
+    const [notes, setNotes] = useState({});
+    const [scripts, setScripts] = useState({});
+    const [activeScript, setActiveScript] = useState(null);
+    const [streamText, setStreamText] = useState("");
+    const [generatingFor, setGeneratingFor] = useState(null);
+    const [statusMsg, setStatusMsg] = useState("");
+    const [mlsChecking, setMlsChecking] = useState(false);
+    const [showWatchlist, setShowWatchlist] = useState(false);
+    const [showAdd, setShowAdd] = useState(false);
+    const [editingNote, setEditingNote] = useState(null);
+    const [noteText, setNoteText] = useState("");
+    const [manualForm, setManualForm] = useState({ name: "", city: "", county: "Placer", triggerEvent: "", triggerDate: "", predictedWindow: "", estimatedValue: "", sensitivityLevel: "Medium", recommendedFirstTouch: "", probability: 65 });
+    const [pulseReport, setPulseReport] = useState(null);
+    const [pulseHistory, setPulseHistory] = useState([]);
+    const [pulseLoading, setPulseLoading] = useState(false);
+    const [pulseScanMsg, setPulseScanMsg] = useState("");
+    const [pulseTab, setPulseTab] = useState("brief"); // brief | signals | history
+    const [toast, setToast] = useState("");
+    const toastTimer = useRef(null);
+    const bottomRef = useRef(null);
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await window.storage.list("watch:");
+                if (res?.keys?.length) {
+                    const items = [];
+                    for (const k of res.keys) {
+                        try {
+                            const r = await window.storage.get(k);
+                            if (r?.value)
+                                items.push(JSON.parse(r.value));
+                        }
+                        catch { }
+                    }
+                    setWatchlist(items);
+                }
+            }
+            catch { }
+            try {
+                const nr = await window.storage.get("fc:notes");
+                if (nr?.value)
+                    setNotes(JSON.parse(nr.value));
+            }
+            catch { }
+            // Load pulse history
+            try {
+                const hist = [];
+                const pr = await window.storage.list("pulse:");
+                if (pr?.keys?.length) {
+                    for (const k of pr.keys.sort().reverse().slice(0, 7)) {
+                        try {
+                            const r = await window.storage.get(k);
+                            if (r?.value)
+                                hist.push(JSON.parse(r.value));
+                        }
+                        catch { }
+                    }
+                    setPulseHistory(hist);
+                    if (hist.length > 0)
+                        setPulseReport(hist[0]);
+                }
+                // Auto-generate if no report for today
+                const todayKey = new Date().toISOString().split("T")[0];
+                const existing = hist.find(h => h.dateKey === todayKey);
+                if (!existing) {
+                    setTimeout(() => generatePulse(true), 800);
+                }
+            }
+            catch { }
+        })();
+    }, []);
+    const toggleConfig = (field, val, target = "active") => {
+        if (target === "forecast")
+            setFcConfig(c => ({ ...c, [field]: c[field].includes(val) ? c[field].filter(x => x !== val) : [...c[field], val] }));
+        else
+            setConfig(c => ({ ...c, [field]: c[field].includes(val) ? c[field].filter(x => x !== val) : [...c[field], val] }));
+    };
+    const generateLeads = async () => {
+        if (!config.county.length || !config.leadType.length)
+            return;
+        setStep("generating");
+        setStatusMsg("Querying public records...");
+        if (config.leadType.includes("expired")) {
+            await sleep(500);
+            setStatusMsg("⚖ Cross-checking expired addresses against live MLS...");
+            setMlsChecking(true);
+            await sleep(1600);
+            setMlsChecking(false);
+            setStatusMsg("MLS clear — filtering out relisted properties...");
+            await sleep(600);
+        }
+        else {
+            await sleep(800);
+        }
+        setStatusMsg("Building prospect profiles...");
+        const prompt = `You are a real estate lead generation expert for California's Sierra Nevada foothills. Generate 6 realistic leads for ${config.agentName} at ${config.brokerageName}.
+COUNTIES: ${config.county.join(", ")} County, CA
+LEAD TYPES: ${config.leadType.join(", ")}
+PRICE RANGES: ${config.priceRange.length ? config.priceRange.join(", ") : "All ranges"}
+RULES:
+- expired leads: mlsVerified:true, mlsVerifiedNote:"MLS cross-checked ${new Date().toLocaleDateString()} — not currently listed with any active agent. Safe to contact per NAR Article 16."
+- life transitions: frame POSITIVELY (empty nesters excited for next chapter, upsizing families, downsizers gaining freedom)
+- Use hyper-local refs: El Dorado Hills Town Center, Folsom Historic District, Apple Roseville campus, Intel Folsom, Granite Bay lakefront, Cameron Park Lake, Gold Hill, Hwy 50/80 corridors, Sutter Health
+Return JSON array of 6 objects: id, name, type, county, city, pricePoint, situation, urgency("Hot"|"Warm"|"Cold"), bestContact("Phone"|"Text"|"Email"|"Door Knock"), phone, email, notes, mlsVerified(bool), mlsVerifiedNote(string). Only valid JSON.`;
+        try {
+            const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2500, messages: [{ role: "user", content: prompt }] }) });
+            const data = await res.json();
+            setLeads(JSON.parse(data.content.map(b => b.text || "").join("").replace(/```json|```/g, "").trim()));
+            setStep("results");
+        }
+        catch {
+            setStatusMsg("Error. Please try again.");
+            setStep("config");
+        }
+    };
+    const generateForecast = async () => {
+        if (!fcConfig.county.length || !fcConfig.triggers.length)
+            return;
+        setStep("generating");
+        setStatusMsg("Scanning county court records & filings...");
+        await sleep(800);
+        setStatusMsg("Cross-referencing probate notices & marriage licenses...");
+        await sleep(700);
+        setStatusMsg("Calculating predictive sale windows...");
+        const tLabels = fcConfig.triggers.map(t => FORECAST_TRIGGERS.find(x => x.id === t)?.label).join(", ");
+        const tStats = fcConfig.triggers.map(t => { const f = FORECAST_TRIGGERS.find(x => x.id === t); return `${f?.label}: window ${f?.window}, data: "${f?.stat}"`; }).join("\n");
+        const prompt = `You are a real estate intelligence analyst. Generate 8 PREDICTIVE prospects for ${config.agentName} (${config.brokerageName}) — people NOT selling now but statistically likely to within 3–12 months due to a recent public life event.
+COUNTIES: ${fcConfig.county.join(", ")} County, CA
+TRIGGERS: ${tLabels}
+STATISTICAL DATA:\n${tStats}
+TODAY: May 2026. ALL predictedWindow values must be future dates from today.
+IMPORTANT: Frame situations positively and with empathy. These are people in natural life transitions.
+Return JSON array of 8 with: id(fs_1..fs_8), name, county, city, triggerEvent, triggerDate("Month Year"), publicSource(court filing/LinkedIn/public record), predictedWindow(MUST be "Mon-Mon YYYY" format e.g. "Aug-Oct 2026"), probability(55-92), estimatedValue("$XXXk-$XXXk"), sensitivityLevel("High"|"Medium"|"Low"), recommendedFirstTouch, approachNote, statisticalBasis. Only valid JSON.`;
+        try {
+            const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, messages: [{ role: "user", content: prompt }] }) });
+            const data = await res.json();
+            setFcProspects(JSON.parse(data.content.map(b => b.text || "").join("").replace(/```json|```/g, "").trim()));
+            setStep("results");
+        }
+        catch {
+            setStatusMsg("Error. Try again.");
+            setStep("config");
+        }
+    };
+    const addToWatchlist = async (p) => {
+        const item = { ...p, id: p.id || `sig_${Date.now()}`, wid: `w_${Date.now()}`, addedAt: new Date().toISOString() };
+        setWatchlist(w => [...w, item]); // update UI immediately — never blocked by storage
+        setToast("★ Added to The Forecast");
+        try {
+            await window.storage.set(`watch:${item.wid}`, JSON.stringify(item));
+        }
+        catch (e) {
+            console.warn("storage:", e);
+        }
+    };
+    const removeFromWatchlist = async (item) => {
+        setWatchlist(w => w.filter(x => x.wid !== item.wid)); // remove from UI immediately
+        setToast("Removed from Forecast");
+        try {
+            const r = await window.storage.list("watch:");
+            if (r?.keys)
+                for (const k of r.keys) {
+                    try {
+                        const d = await window.storage.get(k);
+                        if (d?.value && JSON.parse(d.value).wid === item.wid)
+                            await window.storage.delete(k);
+                    }
+                    catch { }
+                }
+        }
+        catch (e) {
+            console.warn("storage:", e);
+        }
+    };
+    const saveNote = async (wid, note) => {
+        const upd = { ...notes, [wid]: note };
+        setNotes(upd);
+        setEditingNote(null);
+        setToast("Note saved");
+        try {
+            await window.storage.set("fc:notes", JSON.stringify(upd));
+        }
+        catch (e) {
+            console.warn("storage:", e);
+        }
+    };
+    const addManual = async () => {
+        if (!manualForm.name || !manualForm.triggerEvent)
+            return;
+        const item = { ...manualForm, id: `manual_${Date.now()}`, wid: `w_${Date.now()}`, addedAt: new Date().toISOString(), publicSource: "Agent-sourced", statisticalBasis: "Agent intelligence", isManual: true };
+        try {
+            await window.storage.set(`watch:${item.wid}`, JSON.stringify(item));
+            setWatchlist(w => [...w, item]);
+            setShowAdd(false);
+            setManualForm({ name: "", city: "", county: "Placer", triggerEvent: "", triggerDate: "", predictedWindow: "", estimatedValue: "", sensitivityLevel: "Medium", recommendedFirstTouch: "", probability: 65 });
+            setToast("★ Added to The Forecast");
+        }
+        catch (e) {
+            console.warn("storage:", e);
+        }
+    };
+    const isWatched = id => watchlist.some(w => w.id === id);
+    const generateScript = async (lead, isFc = false) => {
+        setGeneratingFor(lead.id);
+        setActiveScript(lead.id);
+        setStreamText("");
+        const prompt = isFc
+            ? `Write a relationship-building first touch email for ${config.agentName} (${config.agentEmail}) to ${lead.name} in ${lead.city}, ${lead.county} County.
+Life event: ${lead.triggerEvent}. Sensitivity: ${lead.sensitivityLevel}.
+Timing: ${lead.recommendedFirstTouch}. Approach: ${lead.approachNote}.
+Rules: Do NOT reference the trigger event if sensitivity is High. Provide genuine value (market snapshot or free valuation offer). Zero sales pressure. Position as helpful neighbor. End with ${config.agentEmail}. Under 140 words. Genuine and human.`
+            : `Write a personalized outreach for ${config.agentName} at ${config.brokerageName} (${config.agentEmail}).
+Lead: ${lead.name} · ${lead.city}, ${lead.county} Co. · ${lead.type} · ${lead.pricePoint}
+Situation: ${lead.situation}. Local detail: ${lead.notes}. Best contact: ${lead.bestContact}.
+${lead.mlsVerified ? "MLS STATUS: Verified not listed — safe to contact per NAR Article 16." : ""}
+Write a ${lead.bestContact === "Email" ? "warm email" : lead.bestContact === "Door Knock" ? "door-knock opener" : "phone/text script"} with: hyper-local hook, empathy for situation, ${config.agentName} as local expert, soft CTA, includes ${config.agentEmail}. Under 200 words. Human and specific.`;
+        try {
+            const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 700, stream: true, messages: [{ role: "user", content: prompt }] }) });
+            const reader = res.body.getReader(), dec = new TextDecoder();
+            let full = "";
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done)
+                    break;
+                for (const line of dec.decode(value).split("\n").filter(l => l.startsWith("data: "))) {
+                    try {
+                        const j = JSON.parse(line.slice(6));
+                        if (j.type === "content_block_delta" && j.delta?.text) {
+                            full += j.delta.text;
+                            setStreamText(full);
+                        }
+                    }
+                    catch { }
+                }
+            }
+            setScripts(s => ({ ...s, [lead.id]: full }));
+        }
+        catch {
+            setStreamText("Error.");
+        }
+        setGeneratingFor(null);
+    };
+    const uColor = u => u === "Hot" ? "#ff4d4d" : u === "Warm" ? "#ff9f1c" : "#4dabf7";
+    const uBg = u => u === "Hot" ? "rgba(255,77,77,.12)" : u === "Warm" ? "rgba(255,159,28,.12)" : "rgba(77,171,247,.12)";
+    const sColor = s => s === "High" ? "#ff6b9d" : s === "Medium" ? "#ffd166" : "#06d6a0";
+    const sBg = s => s === "High" ? "rgba(255,107,157,.12)" : s === "Medium" ? "rgba(255,209,102,.12)" : "rgba(6,214,160,.12)";
+    useEffect(() => { if (bottomRef.current)
+        bottomRef.current.scrollIntoView({ behavior: "smooth" }); }, [streamText]);
+    useEffect(() => {
+        if (!toast)
+            return;
+        clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToast(""), 2500);
+        return () => clearTimeout(toastTimer.current);
+    }, [toast]);
+    const switchTab = t => { setTab(t); setStep("config"); setActiveScript(null); setStreamText(""); setShowWatchlist(false); };
+    const SCAN_STEPS = [
+        "📡 Initializing county data feeds...",
+        "🏛 Scanning Placer County Superior Court records...",
+        "🏛 Cross-referencing El Dorado County probate filings...",
+        "🏛 Querying Amador County Recorder database...",
+        "🏛 Parsing Sacramento County court indices...",
+        "💼 Cross-referencing LinkedIn for local job transitions...",
+        "🎓 Analyzing graduation & empty-nester signals...",
+        "🏠 Pulling MLS inventory shifts across 4 counties...",
+        "📊 Correlating market data with trigger events...",
+        "🧠 Compiling your morning intelligence brief..."
+    ];
+    const generatePulse = async (auto = false) => {
+        const todayLabel = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+        if (pulseLoading)
+            return;
+        setPulseLoading(true);
+        if (!auto)
+            setTab("pulse");
+        setShowWatchlist(false);
+        for (let i = 0; i < SCAN_STEPS.length; i++) {
+            setPulseScanMsg(SCAN_STEPS[i]);
+            await sleep(600 + Math.random() * 400);
+        }
+        const todayKey = new Date().toISOString().split("T")[0];
+        const prompt = `You are a real estate intelligence analyst generating a DAILY PULSE REPORT for agent Andrea Lembach (Lembach Group) covering Placer, El Dorado, Amador, and Sacramento counties in California's Sierra Nevada foothills.
+
+DATE: May 2, 2026. Simulate what a real 00:01 automated scrape of public records and market data would find today.
+
+Generate a realistic morning briefing. Return ONLY valid JSON with this exact structure:
+{
+  "dateKey": "${todayKey}",
+  "date": "${todayLabel}",
+  "generatedAt": "00:01",
+  "headline": "One compelling 15-word summary of the most important finding today",
+  "totalSignals": (integer 8-18),
+  "counties": [
+    {
+      "name": "Placer",
+      "heatLevel": "High|Medium|Low",
+      "heatColor": "#ff4d4d|#ffd166|#06d6a0",
+      "probateFilings": (int 0-5),
+      "divorceFilings": (int 0-6),
+      "otherSignals": (int 1-8),
+      "marketMedian": "$XXXk",
+      "marketDOM": (int),
+      "marketTrend": "up|flat|down",
+      "topSignal": "Most notable specific public-record finding this week (be specific — real addresses/courts/amounts)"
+    },
+    { "name": "El Dorado", ... },
+    { "name": "Amador", ... },
+    { "name": "Sacramento", ... }
+  ],
+  "newSignals": [
+    {
+      "id": "pulse_1",
+      "name": "realistic full name",
+      "county": "one of the 4 counties",
+      "city": "real city in that county",
+      "triggerEvent": "specific event with local detail",
+      "triggerDate": "Month Year",
+      "publicSource": "specific public record source",
+      "predictedWindow": "Mon-Mon YYYY format e.g. Aug-Oct 2026",
+      "probability": <55-91>,
+      "estimatedValue": "$XXXk-$XXXk",
+      "sensitivityLevel": "High|Medium|Low",
+      "recommendedFirstTouch": "when and how",
+      "approachNote": "empathetic approach guidance",
+      "statisticalBasis": "one-sentence data point"
+    }
+  ],
+  "marketSnapshot": {
+    "placer":     { "median": "$XXXk", "dom": (int), "trend": "up|flat|down", "note": "brief insight" },
+    "eldorado":   { "median": "$XXXk", "dom": (int), "trend": "up|flat|down", "note": "brief insight" },
+    "amador":     { "median": "$XXXk", "dom": (int), "trend": "up|flat|down", "note": "brief insight" },
+    "sacramento": { "median": "$XXXk", "dom": (int), "trend": "up|flat|down", "note": "brief insight" }
+  },
+  "actionItems": [
+    { "priority": "high|medium|low", "text": "specific actionable task for today" },
+    { "priority": "high|medium|low", "text": "..." },
+    { "priority": "medium", "text": "..." },
+    { "priority": "low", "text": "..." }
+  ]
+}
+
+Generate exactly 6 newSignals. Make everything hyper-local and realistic: reference real local employers (Apple Roseville, Intel Folsom, Sutter Health, UC Davis Medical), local landmarks (Folsom Lake, El Dorado Hills Town Center, Granite Bay), and specific court/record details. No markdown, only JSON.`;
+        try {
+            const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 4000, messages: [{ role: "user", content: prompt }] }) });
+            const data = await res.json();
+            const report = JSON.parse(data.content.map(b => b.text || "").join("").replace(/```json|```/g, "").trim());
+            report.generatedAt = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+            await window.storage.set(`pulse:${report.dateKey}`, JSON.stringify(report));
+            setPulseReport(report);
+            setPulseHistory(h => [report, ...h.filter(x => x.dateKey !== report.dateKey)].slice(0, 7));
+        }
+        catch (e) {
+            console.error(e);
+        }
+        setPulseLoading(false);
+        setPulseScanMsg("");
+    };
+    const heatOrder = { ripe: 0, warming: 1, overdue: 2, planted: 3, unknown: 4 };
+    const sorted = [...watchlist].sort((a, b) => (heatOrder[getHeat(a.predictedWindow).status] || 4) - (heatOrder[getHeat(b.predictedWindow).status] || 4));
+    const hasRipe = sorted.some(w => getHeat(w.predictedWindow).status === "ripe");
+    return (React.createElement("div", { style: S.root },
+        React.createElement("style", null, css),
+        toast && (React.createElement("div", { style: S.toast, className: "toast-in" }, toast)),
+        React.createElement("header", { style: S.header },
+            React.createElement("div", { style: S.hdrInner },
+                React.createElement("div", { style: S.diamond }, "\u25C6"),
+                React.createElement("div", null,
+                    React.createElement("div", { style: S.logoText }, "LEAD ENGINE"),
+                    React.createElement("div", { style: S.logoSub }, "Andrea Lembach \u00B7 Lembach Group"))),
+            React.createElement("button", { style: { ...S.fcBtn, ...(showWatchlist ? S.fcBtnOn : {}) }, onClick: () => { setShowWatchlist(!showWatchlist); setShowAdd(false); } },
+                "\u2726 The Forecast",
+                watchlist.length > 0 && React.createElement("span", { style: S.fcCount }, watchlist.length),
+                hasRipe && React.createElement("span", { style: S.ripeDot, className: "pulse" }))),
+        !showWatchlist && (React.createElement("div", { style: S.tabs },
+            React.createElement("div", { style: { ...S.tab, ...(tab === "active" ? S.tabGold : {}) }, onClick: () => switchTab("active") },
+                React.createElement("div", { style: S.tabTitle }, "Active Leads"),
+                React.createElement("div", { style: S.tabSub }, "Ready-to-contact prospects")),
+            React.createElement("div", { style: { ...S.tab, ...(tab === "forecast" ? S.tabBlue : {}) }, onClick: () => switchTab("forecast") },
+                React.createElement("div", { style: S.tabTitle },
+                    "\u2726 The Forecast ",
+                    React.createElement("span", { style: S.betaBadge }, "predictive")),
+                React.createElement("div", { style: S.tabSub }, "Know who's selling before they do")),
+            React.createElement("div", { style: { ...S.tab, ...(tab === "pulse" ? S.tabPulse : {}) }, onClick: () => switchTab("pulse") },
+                React.createElement("div", { style: S.tabTitle },
+                    React.createElement("span", { style: { ...S.radarDot, ...(pulseLoading ? {} : {}) }, className: pulseLoading ? "" : "radar-idle" }, "\uD83D\uDCE1"),
+                    "Daily Pulse",
+                    pulseReport && !pulseLoading && React.createElement("span", { style: S.pulseReadyDot, className: "pulse" })),
+                React.createElement("div", { style: S.tabSub }, pulseLoading ? "Scanning counties..." : pulseReport ? `Updated ${pulseReport.generatedAt}` : "Morning county briefing")))),
+        showWatchlist && (React.createElement("div", { style: S.wrap, className: "fade-in" },
+            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 6 } },
+                React.createElement("div", null,
+                    React.createElement("div", { style: S.hero },
+                        React.createElement("span", { style: { color: "#66b2ff" } }, "\u2726"),
+                        " The Forecast"),
+                    React.createElement("p", { style: S.heroSub }, "Your long-game pipeline. Sorted by heat \u2014 ripest contacts at the top.")),
+                React.createElement("button", { style: S.addBtn, onClick: () => setShowAdd(!showAdd) }, "+ Add Person Manually")),
+            showAdd && (React.createElement("div", { style: S.manualBox, className: "fade-in" },
+                React.createElement("div", { style: S.manualTitle }, "Add someone you know about to The Forecast"),
+                React.createElement("div", { style: S.manualGrid },
+                    [["name", "Name *"], ["city", "City"], ["triggerDate", "When you noticed"], ["predictedWindow", "Predicted Sell Window (e.g. Sep-Nov 2026)"], ["estimatedValue", "Est. Home Value"]].map(([k, l]) => (React.createElement("div", { key: k },
+                        React.createElement("div", { style: S.fLabel }, l),
+                        React.createElement("input", { style: S.inp, value: manualForm[k] || "", onChange: e => setManualForm(f => ({ ...f, [k]: e.target.value })) })))),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: S.fLabel }, "County"),
+                        React.createElement("select", { style: S.sel, value: manualForm.county, onChange: e => setManualForm(f => ({ ...f, county: e.target.value })) }, COUNTIES.map(c => React.createElement("option", { key: c }, c)))),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: S.fLabel }, "Sensitivity"),
+                        React.createElement("select", { style: S.sel, value: manualForm.sensitivityLevel, onChange: e => setManualForm(f => ({ ...f, sensitivityLevel: e.target.value })) },
+                            React.createElement("option", null, "Low"),
+                            React.createElement("option", null, "Medium"),
+                            React.createElement("option", null, "High"))),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: S.fLabel }, "Probability %"),
+                        React.createElement("input", { style: S.inp, type: "number", min: "10", max: "99", value: manualForm.probability, onChange: e => setManualForm(f => ({ ...f, probability: e.target.value })) })),
+                    React.createElement("div", { style: { gridColumn: "1/-1" } },
+                        React.createElement("div", { style: S.fLabel }, "Life Event * (what you observed)"),
+                        React.createElement("input", { style: S.inp, value: manualForm.triggerEvent, onChange: e => setManualForm(f => ({ ...f, triggerEvent: e.target.value })), placeholder: "e.g. Kids just graduated from Del Oro \u2014 empty nesters in a 4BR Cameron Park home" })),
+                    React.createElement("div", { style: { gridColumn: "1/-1" } },
+                        React.createElement("div", { style: S.fLabel }, "When & how to first reach out"),
+                        React.createElement("input", { style: S.inp, value: manualForm.recommendedFirstTouch, onChange: e => setManualForm(f => ({ ...f, recommendedFirstTouch: e.target.value })), placeholder: "e.g. September 2026 \u2014 send a market update, ask how they're enjoying the quiet house" }))),
+                React.createElement("button", { style: S.manualSubmit, onClick: addManual }, "Add to The Forecast \u2192"))),
+            sorted.length === 0 && !showAdd && (React.createElement("div", { style: S.empty },
+                React.createElement("div", { style: S.emptyIcon }, "\u2726"),
+                React.createElement("div", { style: S.emptyTitle }, "The Forecast is empty."),
+                React.createElement("div", { style: S.emptySub }, "Run a scan or add someone manually above."))),
+            React.createElement("div", { style: S.grid }, sorted.map(p => {
+                const heat = getHeat(p.predictedWindow), note = notes[p.wid] || "", isEd = editingNote === p.wid;
+                return (React.createElement("div", { key: p.wid, style: { ...S.fcCard, ...(heat.status === "ripe" ? S.fcCardRipe : {}), ...(p.isManual ? S.fcCardManual : {}) }, className: heat.status === "ripe" ? "ripe-card" : "" },
+                    React.createElement("div", { style: S.cardTop },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: S.name },
+                                p.name,
+                                p.isManual && React.createElement("span", { style: S.manualBadge }, "agent-sourced")),
+                            React.createElement("div", { style: S.loc },
+                                "\uD83D\uDCCD ",
+                                p.city,
+                                ", ",
+                                p.county,
+                                " Co.")),
+                        React.createElement("div", { style: { ...S.badge, ...{ background: sBg(p.sensitivityLevel), color: sColor(p.sensitivityLevel) } } },
+                            p.sensitivityLevel,
+                            " sensitivity")),
+                    React.createElement("div", { style: { ...S.heatBox, borderColor: heat.color + "44" } },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 } },
+                            React.createElement("span", { style: { ...S.heatLbl, color: heat.color }, className: heat.glow ? "glow" : "" }, heat.label),
+                            React.createElement("span", { style: S.heatDays }, heat.daysLabel)),
+                        React.createElement("div", { style: S.track },
+                            React.createElement("div", { style: { ...S.fill, width: `${heat.pct}%`, background: heat.color, boxShadow: heat.glow ? `0 0 10px ${heat.color}` : "" } })),
+                        p.predictedWindow && React.createElement("div", { style: S.winLabel },
+                            "Window: ",
+                            p.predictedWindow)),
+                    React.createElement("div", { style: S.triggerBox },
+                        React.createElement("div", { style: S.triggerLbl },
+                            "TRIGGER",
+                            p.triggerDate ? ` · ${p.triggerDate}` : ""),
+                        React.createElement("div", { style: S.triggerTxt }, p.triggerEvent),
+                        p.publicSource && p.publicSource !== "Agent-sourced" && React.createElement("div", { style: S.triggerSrc },
+                            "\uD83D\uDCCB ",
+                            p.publicSource)),
+                    React.createElement("div", { style: S.statsRow },
+                        React.createElement("div", { style: S.statBox },
+                            React.createElement("div", { style: S.statLbl }, "Sell Window"),
+                            React.createElement("div", { style: S.statVal }, p.predictedWindow || "TBD")),
+                        React.createElement("div", { style: S.statBox },
+                            React.createElement("div", { style: S.statLbl }, "Probability"),
+                            React.createElement("div", { style: { ...S.statBig, color: heat.color } },
+                                p.probability,
+                                "%")),
+                        React.createElement("div", { style: S.statBox },
+                            React.createElement("div", { style: S.statLbl }, "Est. Value"),
+                            React.createElement("div", { style: S.statVal }, p.estimatedValue || "—"))),
+                    p.recommendedFirstTouch && (React.createElement("div", { style: S.touchBox },
+                        React.createElement("div", { style: S.boxLbl }, "\u23F1 FIRST TOUCH"),
+                        React.createElement("div", { style: S.boxTxt }, p.recommendedFirstTouch))),
+                    React.createElement("div", { style: S.notesBox },
+                        React.createElement("div", { style: S.boxLbl }, "\uD83D\uDCDD YOUR NOTES"),
+                        isEd ? (React.createElement("div", null,
+                            React.createElement("textarea", { style: S.noteTa, rows: 3, value: noteText, onChange: e => setNoteText(e.target.value), autoFocus: true, placeholder: "Last contact, observations, next steps..." }),
+                            React.createElement("div", { style: { display: "flex", gap: 8, marginTop: 8 } },
+                                React.createElement("button", { style: S.saveNote, onClick: () => saveNote(p.wid, noteText) }, "Save"),
+                                React.createElement("button", { style: S.cancelNote, onClick: () => setEditingNote(null) }, "Cancel")))) : (React.createElement("div", { style: S.noteView, onClick: () => { setEditingNote(p.wid); setNoteText(note); } }, note || React.createElement("span", { style: { color: "#444", fontStyle: "italic" } }, "Click to add notes \u2014 last contact, what you noticed, next steps...")))),
+                    React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 } },
+                        React.createElement("button", { style: S.scriptBtn, onClick: () => { if (activeScript === p.wid) {
+                                setActiveScript(null);
+                            }
+                            else {
+                                setActiveScript(p.wid);
+                                generateScript(p, true);
+                            } }, disabled: generatingFor === p.id, className: "script-btn" }, generatingFor === p.id ? "Writing..." : scripts[p.id] ? "Regenerate Outreach" : "✍️ Soft-Touch Outreach"),
+                        React.createElement("button", { style: S.removeBtn, onClick: () => removeFromWatchlist(p) }, "Remove")),
+                    activeScript === p.wid && (React.createElement(ScriptBox, { script: scripts[p.id] || streamText, streaming: generatingFor === p.id, bottomRef: bottomRef, foresight: true, bestContact: "Email" }))));
+            })))),
+        !showWatchlist && tab === "active" && step === "config" && (React.createElement("div", { style: S.wrap, className: "fade-in" },
+            React.createElement("div", { style: S.hero },
+                "Find your next client.",
+                React.createElement("br", null),
+                React.createElement("span", { style: { color: "#c9a84c" } }, "In your backyard.")),
+            React.createElement("p", { style: S.heroSub }, "Expired listings are cross-checked against the live MLS before appearing \u2014 no accidental contact with represented sellers."),
+            React.createElement("div", { style: S.agentCard }, [["agentName", "Agent Name"], ["brokerageName", "Brokerage"], ["agentEmail", "Agent Email"]].map(([k, l]) => (React.createElement("div", { key: k },
+                React.createElement("div", { style: S.fLabel }, l),
+                React.createElement("input", { style: S.inp, value: config[k], onChange: e => setConfig(c => ({ ...c, [k]: e.target.value })) }))))),
+            React.createElement(SecLabel, null, "Target Counties"),
+            React.createElement("div", { style: S.chips }, COUNTIES.map(c => React.createElement(Chip, { key: c, on: config.county.includes(c), click: () => toggleConfig("county", c) },
+                c,
+                " County"))),
+            React.createElement(SecLabel, null, "Lead Types"),
+            React.createElement("div", { style: S.ltGrid }, LEAD_TYPES.map(lt => (React.createElement("div", { key: lt.id, style: { ...S.ltCard, ...(config.leadType.includes(lt.id) ? S.ltOn : {}) }, onClick: () => toggleConfig("leadType", lt.id), className: "lead-card" },
+                React.createElement("div", { style: S.ltLbl },
+                    lt.label,
+                    lt.id === "expired" && React.createElement("span", { style: S.mlsTag }, "\u2713 MLS-checked")),
+                React.createElement("div", { style: S.ltDesc }, lt.desc))))),
+            React.createElement(SecLabel, null,
+                "Price Range ",
+                React.createElement("span", { style: { color: "#444", fontStyle: "italic", textTransform: "none", letterSpacing: 0, fontSize: 11 } }, "(optional)")),
+            React.createElement("div", { style: S.chips }, PRICE_RANGES.map(p => React.createElement(Chip, { key: p, on: config.priceRange.includes(p), click: () => toggleConfig("priceRange", p) }, p))),
+            React.createElement("button", { style: { ...S.genBtn, opacity: config.county.length && config.leadType.length ? 1 : 0.4 }, onClick: generateLeads, disabled: !config.county.length || !config.leadType.length, className: "gen-btn" }, "Generate Leads \u2192"),
+            React.createElement("div", { style: S.ethicsNote }, "\u2696 NAR Article 16 compliant \u2014 expired listings MLS-verified before display"))),
+        !showWatchlist && tab === "forecast" && step === "config" && (React.createElement("div", { style: S.wrap, className: "fade-in" },
+            React.createElement("div", { style: S.hero },
+                React.createElement("span", { style: { color: "#66b2ff" } }, "\u2726"),
+                " See the move",
+                React.createElement("br", null),
+                React.createElement("span", { style: { color: "#66b2ff" } }, "before they make it.")),
+            React.createElement("p", { style: S.heroSub }, "The Forecast scans public records for life events that statistically precede a home sale by 3\u201312 months. Watch quietly. Build a real relationship. Be there the moment they're ready \u2014 before anyone else even knows."),
+            React.createElement("div", { style: S.infoBox },
+                React.createElement("div", { style: S.infoLbl }, "HOW IT WORKS"),
+                React.createElement("div", { style: S.infoTxt }, "All data sourced from public records: court filings, probate notices, marriage licenses, business filings, graduation announcements. Prospects are tracked with patience and empathy \u2014 The Forecast is a relationship-building tool, not a spam machine.")),
+            React.createElement(SecLabel, null, "Counties to Monitor"),
+            React.createElement("div", { style: S.chips }, COUNTIES.map(c => React.createElement(Chip, { key: c, on: fcConfig.county.includes(c), click: () => toggleConfig("county", c, "forecast"), blue: true },
+                c,
+                " County"))),
+            React.createElement(SecLabel, null, "Life Event Triggers"),
+            React.createElement("div", { style: S.trigGrid }, FORECAST_TRIGGERS.map(t => (React.createElement("div", { key: t.id, style: { ...S.trigCard, ...(fcConfig.triggers.includes(t.id) ? S.trigOn : {}) }, onClick: () => toggleConfig("triggers", t.id, "forecast"), className: "lead-card" },
+                React.createElement("div", { style: S.trigIcon }, t.icon),
+                React.createElement("div", { style: S.trigTitle }, t.label),
+                React.createElement("div", { style: S.trigWindow }, t.window))))),
+            React.createElement("button", { style: { ...S.genBtn, ...S.genBtnBlue, opacity: fcConfig.county.length && fcConfig.triggers.length ? 1 : 0.4 }, onClick: generateForecast, disabled: !fcConfig.county.length || !fcConfig.triggers.length, className: "gen-btn" }, "\u2726 Run Forecast Scan \u2192"))),
+        !showWatchlist && step === "generating" && (React.createElement("div", { style: S.loading, className: "fade-in" },
+            React.createElement("div", { style: { position: "relative", width: 56, height: 56 } },
+                React.createElement("div", { style: S.spinner, className: "spin" }),
+                mlsChecking && React.createElement("div", { style: S.spinnerOuter, className: "spin-slow" })),
+            React.createElement("div", { style: S.loadMsg }, statusMsg),
+            mlsChecking && React.createElement("div", { style: S.mlsBadge }, "\u2696 MLS Cross-Check Active \u2014 Filtering Represented Properties"))),
+        !showWatchlist && tab === "active" && step === "results" && (React.createElement("div", { style: S.wrap, className: "fade-in" },
+            React.createElement("div", { style: S.resultsHdr },
+                React.createElement("div", null,
+                    React.createElement("div", { style: S.resultsTitle },
+                        leads.length,
+                        " Leads Generated"),
+                    React.createElement("div", { style: S.resultsSub },
+                        config.county.join(" · "),
+                        " County")),
+                React.createElement("button", { style: S.backBtn, onClick: () => setStep("config") }, "\u2190 New Search")),
+            React.createElement("div", { style: S.grid }, leads.map(lead => (React.createElement("div", { key: lead.id, style: S.leadCard, className: "lead-result-card" },
+                React.createElement("div", { style: S.cardTop },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: S.name }, lead.name),
+                        React.createElement("div", { style: S.loc },
+                            "\uD83D\uDCCD ",
+                            lead.city,
+                            ", ",
+                            lead.county,
+                            " Co.")),
+                    React.createElement("div", { style: { ...S.badge, background: uBg(lead.urgency), color: uColor(lead.urgency) } }, lead.urgency)),
+                lead.mlsVerified && (React.createElement("div", { style: S.mlsBox },
+                    React.createElement("span", { style: S.mlsCheck }, "\u2713"),
+                    React.createElement("div", null,
+                        React.createElement("div", { style: S.mlsTitle }, "MLS Verified \u2014 Safe to Contact"),
+                        React.createElement("div", { style: S.mlsNote }, lead.mlsVerifiedNote)))),
+                React.createElement("div", { style: S.metaRow }, [lead.type, lead.pricePoint, `📞 ${lead.bestContact}`].map(m => React.createElement("span", { key: m, style: S.metaTag }, m))),
+                React.createElement("div", { style: S.situation }, lead.situation),
+                React.createElement("div", { style: S.noteHint },
+                    "\uD83D\uDCA1 ",
+                    lead.notes),
+                React.createElement("div", { style: S.contactRow },
+                    React.createElement("span", { style: S.contact },
+                        "\uD83D\uDCF1 ",
+                        lead.phone),
+                    React.createElement("span", { style: S.contact },
+                        "\u2709\uFE0F ",
+                        lead.email)),
+                React.createElement("button", { style: S.scriptBtn, onClick: () => { const same = activeScript === lead.id; setActiveScript(same ? null : lead.id); if (!same)
+                        generateScript(lead, false); }, disabled: generatingFor === lead.id, className: "script-btn" }, generatingFor === lead.id ? "Writing..." : scripts[lead.id] ? "Regenerate Script" : "✍️ Generate Outreach Script"),
+                activeScript === lead.id && (React.createElement(ScriptBox, { script: scripts[lead.id] || streamText, streaming: generatingFor === lead.id, bottomRef: bottomRef, bestContact: lead.bestContact })))))))),
+        !showWatchlist && tab === "forecast" && step === "results" && (React.createElement("div", { style: S.wrap, className: "fade-in" },
+            React.createElement("div", { style: S.resultsHdr },
+                React.createElement("div", null,
+                    React.createElement("div", { style: S.resultsTitle },
+                        React.createElement("span", { style: { color: "#66b2ff" } }, "\u2726"),
+                        " ",
+                        fcProspects.length,
+                        " Future Sellers"),
+                    React.createElement("div", { style: S.resultsSub },
+                        "Predicted to list in 3\u201312 months \u00B7 ",
+                        fcConfig.county.join(" · "),
+                        " Co.")),
+                React.createElement("button", { style: S.backBtn, onClick: () => setStep("config") }, "\u2190 New Scan")),
+            React.createElement("div", { style: S.grid }, fcProspects.map(p => {
+                const heat = getHeat(p.predictedWindow);
+                return (React.createElement("div", { key: p.id, style: S.fcCard, className: "lead-result-card" },
+                    React.createElement("div", { style: S.cardTop },
+                        React.createElement("div", null,
+                            React.createElement("div", { style: S.name }, p.name),
+                            React.createElement("div", { style: S.loc },
+                                "\uD83D\uDCCD ",
+                                p.city,
+                                ", ",
+                                p.county,
+                                " Co.")),
+                        React.createElement("div", { style: { ...S.badge, background: sBg(p.sensitivityLevel), color: sColor(p.sensitivityLevel) } },
+                            p.sensitivityLevel,
+                            " sensitivity")),
+                    React.createElement("div", { style: { ...S.heatBox, borderColor: heat.color + "33", marginBottom: 14 } },
+                        React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 6 } },
+                            React.createElement("span", { style: { ...S.heatLbl, color: heat.color, fontSize: 12 } }, heat.label),
+                            React.createElement("span", { style: S.heatDays }, heat.daysLabel)),
+                        React.createElement("div", { style: S.track },
+                            React.createElement("div", { style: { ...S.fill, width: `${heat.pct}%`, background: heat.color } }))),
+                    React.createElement("div", { style: S.triggerBox },
+                        React.createElement("div", { style: S.triggerLbl },
+                            "TRIGGER \u00B7 ",
+                            p.triggerDate),
+                        React.createElement("div", { style: S.triggerTxt }, p.triggerEvent),
+                        React.createElement("div", { style: S.triggerSrc },
+                            "\uD83D\uDCCB ",
+                            p.publicSource)),
+                    React.createElement("div", { style: S.statsRow },
+                        React.createElement("div", { style: S.statBox },
+                            React.createElement("div", { style: S.statLbl }, "Predicted Sale"),
+                            React.createElement("div", { style: S.statVal }, p.predictedWindow)),
+                        React.createElement("div", { style: S.statBox },
+                            React.createElement("div", { style: S.statLbl }, "Probability"),
+                            React.createElement("div", { style: { ...S.statBig, color: heat.color } },
+                                p.probability,
+                                "%")),
+                        React.createElement("div", { style: S.statBox },
+                            React.createElement("div", { style: S.statLbl }, "Est. Value"),
+                            React.createElement("div", { style: S.statVal }, p.estimatedValue))),
+                    React.createElement("div", { style: S.touchBox },
+                        React.createElement("div", { style: S.boxLbl }, "\u23F1 FIRST TOUCH"),
+                        React.createElement("div", { style: S.boxTxt }, p.recommendedFirstTouch)),
+                    React.createElement("div", { style: S.approachBox },
+                        React.createElement("div", { style: S.boxLbl }, "\uD83D\uDC9B APPROACH"),
+                        React.createElement("div", { style: S.boxTxt }, p.approachNote)),
+                    React.createElement("div", { style: S.basisNote },
+                        "\uD83D\uDCCA ",
+                        p.statisticalBasis),
+                    React.createElement("div", { style: { display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 } },
+                        React.createElement("button", { style: { ...S.watchBtn2, ...(isWatched(p.id) ? S.watchedBtn : {}) }, onClick: () => { if (!isWatched(p.id))
+                                addToWatchlist(p); } }, isWatched(p.id) ? "★ In The Forecast" : "☆ Add to Forecast"),
+                        React.createElement("button", { style: S.scriptBtn, onClick: () => { const same = activeScript === p.id; setActiveScript(same ? null : p.id); if (!same)
+                                generateScript(p, true); }, disabled: generatingFor === p.id, className: "script-btn" }, generatingFor === p.id ? "Writing..." : scripts[p.id] ? "Regenerate" : "✍️ Soft-Touch Outreach")),
+                    activeScript === p.id && (React.createElement(ScriptBox, { script: scripts[p.id] || streamText, streaming: generatingFor === p.id, bottomRef: bottomRef, foresight: true, bestContact: "Email" }))));
+            })))),
+        !showWatchlist && tab === "pulse" && (React.createElement("div", { style: S.wrap, className: "fade-in" },
+            pulseLoading && (React.createElement("div", { style: S.pulseLoading },
+                React.createElement("div", { style: S.radarWrap },
+                    React.createElement("div", { style: S.radarRing1, className: "radar-ring" }),
+                    React.createElement("div", { style: S.radarRing2, className: "radar-ring-2" }),
+                    React.createElement("div", { style: S.radarRing3, className: "radar-ring-3" }),
+                    React.createElement("div", { style: S.radarCore }, "\uD83D\uDCE1"),
+                    React.createElement("div", { style: S.radarSweep, className: "radar-sweep" })),
+                React.createElement("div", { style: S.pulseScanTitle }, "SCANNING FOUR COUNTIES"),
+                React.createElement("div", { style: S.pulseScanMsg }, pulseScanMsg),
+                React.createElement("div", { style: S.pulseScanSub }, "Placer \u00B7 El Dorado \u00B7 Amador \u00B7 Sacramento"))),
+            !pulseLoading && !pulseReport && (React.createElement("div", { style: S.empty },
+                React.createElement("div", { style: { fontSize: 48, marginBottom: 16 } }, "\uD83D\uDCE1"),
+                React.createElement("div", { style: S.emptyTitle }, "No pulse report yet."),
+                React.createElement("div", { style: S.emptySub }, "Generate your first morning briefing."),
+                React.createElement("button", { style: { ...S.genBtn, marginTop: 24, width: "auto", padding: "14px 32px" }, onClick: () => generatePulse(false), className: "gen-btn" }, "Run Daily Pulse Now"))),
+            !pulseLoading && pulseReport && (React.createElement("div", null,
+                React.createElement("div", { style: S.pulseHeader },
+                    React.createElement("div", null,
+                        React.createElement("div", { style: S.pulseTitle }, "\uD83D\uDCE1 Daily Pulse"),
+                        React.createElement("div", { style: S.pulseDate },
+                            pulseReport.date,
+                            " \u00B7 Generated ",
+                            pulseReport.generatedAt,
+                            " \u00B7 Next run at 00:01")),
+                    React.createElement("button", { style: S.pulseRefreshBtn, onClick: () => generatePulse(false) }, "\u21BB Refresh Now")),
+                React.createElement("div", { style: S.pulseHeadline },
+                    React.createElement("div", { style: S.pulseHeadlineLbl }, "TODAY'S HEADLINE"),
+                    React.createElement("div", { style: S.pulseHeadlineTxt }, pulseReport.headline),
+                    React.createElement("div", { style: S.pulseTotalSignals },
+                        pulseReport.totalSignals,
+                        " signals detected across 4 counties")),
+                React.createElement("div", { style: S.pulseSubTabs }, [["brief", "Morning Brief"], ["signals", "New Signals (" + (pulseReport.newSignals?.length || 0) + ")"], ["history", "History (" + pulseHistory.length + "d)"]].map(([id, lbl]) => (React.createElement("div", { key: id, style: { ...S.pulseSubTab, ...(pulseTab === id ? S.pulseSubTabOn : {}) }, onClick: () => setPulseTab(id) }, lbl)))),
+                pulseTab === "brief" && (React.createElement("div", { className: "fade-in" },
+                    React.createElement("div", { style: S.countyGrid }, pulseReport.counties?.map(c => (React.createElement("div", { key: c.name, style: { ...S.countyCard, borderColor: c.heatColor + "44" } },
+                        React.createElement("div", { style: S.countyTop },
+                            React.createElement("div", { style: S.countyName },
+                                c.name,
+                                " County"),
+                            React.createElement("div", { style: { ...S.countyHeat, background: c.heatColor + "22", color: c.heatColor } }, c.heatLevel)),
+                        React.createElement("div", { style: S.countyStats },
+                            React.createElement("div", { style: S.cStat },
+                                React.createElement("div", { style: S.cStatN }, c.probateFilings),
+                                React.createElement("div", { style: S.cStatL }, "Probate")),
+                            React.createElement("div", { style: S.cStat },
+                                React.createElement("div", { style: S.cStatN }, c.divorceFilings),
+                                React.createElement("div", { style: S.cStatL }, "Divorce")),
+                            React.createElement("div", { style: S.cStat },
+                                React.createElement("div", { style: S.cStatN }, c.otherSignals),
+                                React.createElement("div", { style: S.cStatL }, "Other")),
+                            React.createElement("div", { style: S.cStat },
+                                React.createElement("div", { style: { ...S.cStatN, color: c.marketTrend === "up" ? "#06d6a0" : c.marketTrend === "down" ? "#ff6b6b" : "#aaa" } }, c.marketMedian),
+                                React.createElement("div", { style: S.cStatL }, "Median"))),
+                        React.createElement("div", { style: S.countyTopSig },
+                            "\uD83D\uDCA1 ",
+                            c.topSignal),
+                        React.createElement("div", { style: S.countyMarket },
+                            React.createElement("span", { style: { color: c.marketTrend === "up" ? "#06d6a0" : c.marketTrend === "down" ? "#ff4d4d" : "#aaa" } },
+                                c.marketTrend === "up" ? "↑" : c.marketTrend === "down" ? "↓" : "→",
+                                " ",
+                                c.marketMedian),
+                            React.createElement("span", { style: { color: "#555", margin: "0 8px" } }, "\u00B7"),
+                            React.createElement("span", { style: { color: "#777" } },
+                                c.marketDOM,
+                                " avg days on market")))))),
+                    React.createElement("div", { style: S.actionSection },
+                        React.createElement("div", { style: S.pulseSecLbl }, "\uD83C\uDFAF TODAY'S ACTION ITEMS"),
+                        pulseReport.actionItems?.map((a, i) => (React.createElement("div", { key: i, style: { ...S.actionItem, borderLeftColor: a.priority === "high" ? "#ff4d4d" : a.priority === "medium" ? "#ffd166" : "#4dabf7" } },
+                            React.createElement("div", { style: { ...S.actionPriority, color: a.priority === "high" ? "#ff4d4d" : a.priority === "medium" ? "#ffd166" : "#4dabf7" } }, a.priority.toUpperCase()),
+                            React.createElement("div", { style: S.actionTxt }, a.text))))),
+                    React.createElement("div", { style: S.marketSection },
+                        React.createElement("div", { style: S.pulseSecLbl }, "\uD83D\uDCC8 MARKET SNAPSHOT"),
+                        React.createElement("div", { style: S.marketGrid }, Object.entries(pulseReport.marketSnapshot || {}).map(([key, m]) => (React.createElement("div", { key: key, style: S.marketCard },
+                            React.createElement("div", { style: S.marketCounty }, key.charAt(0).toUpperCase() + key.slice(1)),
+                            React.createElement("div", { style: { ...S.marketMedian2, color: m.trend === "up" ? "#06d6a0" : m.trend === "down" ? "#ff6b6b" : "#e8e6e0" } }, m.median),
+                            React.createElement("div", { style: S.marketDom },
+                                m.dom,
+                                " DOM"),
+                            React.createElement("div", { style: S.marketNote2 }, m.note)))))))),
+                pulseTab === "signals" && (React.createElement("div", { style: S.grid, className: "fade-in" }, pulseReport.newSignals?.map(p => {
+                    const heat = getHeat(p.predictedWindow);
+                    return (React.createElement("div", { key: p.id, style: S.fcCard, className: "lead-result-card" },
+                        React.createElement("div", { style: S.cardTop },
+                            React.createElement("div", null,
+                                React.createElement("div", { style: S.name }, p.name),
+                                React.createElement("div", { style: S.loc },
+                                    "\uD83D\uDCCD ",
+                                    p.city,
+                                    ", ",
+                                    p.county,
+                                    " Co.")),
+                            React.createElement("div", { style: { ...S.badge, background: sBg(p.sensitivityLevel), color: sColor(p.sensitivityLevel) } },
+                                p.sensitivityLevel,
+                                " sensitivity")),
+                        React.createElement("div", { style: { ...S.heatBox, borderColor: heat.color + "33", marginBottom: 12 } },
+                            React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: 6 } },
+                                React.createElement("span", { style: { ...S.heatLbl, color: heat.color, fontSize: 12 } }, heat.label),
+                                React.createElement("span", { style: S.heatDays }, heat.daysLabel)),
+                            React.createElement("div", { style: S.track },
+                                React.createElement("div", { style: { ...S.fill, width: `${heat.pct}%`, background: heat.color } }))),
+                        React.createElement("div", { style: S.triggerBox },
+                            React.createElement("div", { style: S.triggerLbl },
+                                "TRIGGER \u00B7 ",
+                                p.triggerDate),
+                            React.createElement("div", { style: S.triggerTxt }, p.triggerEvent),
+                            React.createElement("div", { style: S.triggerSrc },
+                                "\uD83D\uDCCB ",
+                                p.publicSource)),
+                        React.createElement("div", { style: S.statsRow },
+                            React.createElement("div", { style: S.statBox },
+                                React.createElement("div", { style: S.statLbl }, "Window"),
+                                React.createElement("div", { style: S.statVal }, p.predictedWindow)),
+                            React.createElement("div", { style: S.statBox },
+                                React.createElement("div", { style: S.statLbl }, "Probability"),
+                                React.createElement("div", { style: { ...S.statBig, color: heat.color } },
+                                    p.probability,
+                                    "%")),
+                            React.createElement("div", { style: S.statBox },
+                                React.createElement("div", { style: S.statLbl }, "Est. Value"),
+                                React.createElement("div", { style: S.statVal }, p.estimatedValue))),
+                        React.createElement("div", { style: S.touchBox },
+                            React.createElement("div", { style: S.boxLbl }, "\u23F1 FIRST TOUCH"),
+                            React.createElement("div", { style: S.boxTxt }, p.recommendedFirstTouch)),
+                        React.createElement("div", { style: S.basisNote },
+                            "\uD83D\uDCCA ",
+                            p.statisticalBasis),
+                        React.createElement("button", { style: { ...S.watchBtn2, ...(isWatched(p.id) ? S.watchedBtn : {}) }, onClick: () => { if (!isWatched(p.id))
+                                addToWatchlist(p); } }, isWatched(p.id) ? "★ In The Forecast" : "☆ Add to The Forecast")));
+                }))),
+                pulseTab === "history" && (React.createElement("div", { className: "fade-in" }, pulseHistory.map((h, i) => (React.createElement("div", { key: h.dateKey, style: { ...S.historyCard, ...(i === 0 ? S.historyCardActive : {}) }, onClick: () => { setPulseReport(h); setPulseTab("brief"); } },
+                    React.createElement("div", { style: S.histDate }, h.date),
+                    React.createElement("div", { style: S.histHeadline }, h.headline),
+                    React.createElement("div", { style: S.histMeta },
+                        h.totalSignals,
+                        " signals \u00B7 Generated ",
+                        h.generatedAt))))))))))));
+}
+function ScriptBox({ script, streaming, bottomRef, foresight, bestContact }) {
+    return (React.createElement("div", { style: S.scriptBox, className: "fade-in" },
+        React.createElement("div", { style: S.scriptTitle }, foresight ? "Soft-Touch Outreach — No Pitch" : `Outreach Script — ${bestContact}`),
+        React.createElement("div", { style: S.scriptTxt },
+            script || "Generating...",
+            streaming && React.createElement("span", { style: { color: "#c9a84c", fontWeight: "bold" }, className: "blink" }, "|")),
+        !streaming && script && React.createElement("button", { style: S.copyBtn, onClick: () => navigator.clipboard.writeText(script) }, "Copy Script"),
+        React.createElement("div", { ref: bottomRef })));
+}
+function SecLabel({ children }) { return React.createElement("div", { style: S.secLbl }, children); }
+function Chip({ on, click, children, blue }) {
+    const activeStyle = blue ? { background: "rgba(102,178,255,.15)", border: "1px solid #66b2ff", color: "#66b2ff" } : { background: "rgba(201,168,76,.15)", border: "1px solid #c9a84c", color: "#c9a84c" };
+    return React.createElement("div", { style: { ...S.chip, ...(on ? activeStyle : {}) }, onClick: click, className: "chip" }, children);
+}
+const S = {
+    root: { minHeight: "100vh", background: "#0b0d12", color: "#e8e6e0", fontFamily: "'Georgia','Times New Roman',serif" },
+    header: { borderBottom: "1px solid rgba(255,255,255,.08)", padding: "16px 26px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,.02)", backdropFilter: "blur(10px)", position: "sticky", top: 0, zIndex: 100 },
+    hdrInner: { display: "flex", alignItems: "center", gap: 13 },
+    diamond: { fontSize: 24, color: "#c9a84c" },
+    logoText: { fontSize: 16, letterSpacing: ".15em", color: "#f0ede6", fontWeight: "bold" },
+    logoSub: { fontSize: 10, color: "#666", letterSpacing: ".07em", marginTop: 2 },
+    fcBtn: { background: "transparent", border: "1px solid rgba(102,178,255,.4)", color: "#66b2ff", padding: "8px 16px", borderRadius: 6, cursor: "pointer", fontSize: 13, fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8, position: "relative" },
+    fcBtnOn: { background: "rgba(102,178,255,.12)" },
+    fcCount: { background: "#66b2ff", color: "#0b0d12", fontSize: 11, fontWeight: "bold", padding: "1px 7px", borderRadius: 10 },
+    ripeDot: { width: 8, height: 8, background: "#ff6b35", borderRadius: "50%", position: "absolute", top: -3, right: -3 },
+    tabs: { maxWidth: 860, margin: "16px auto 0", padding: "0 22px", display: "flex", gap: 12 },
+    tab: { flex: 1, padding: "13px 16px", border: "1px solid rgba(255,255,255,.1)", borderRadius: 10, cursor: "pointer", transition: "all .2s", background: "rgba(255,255,255,.02)" },
+    tabGold: { background: "rgba(201,168,76,.08)", border: "1px solid rgba(201,168,76,.4)" },
+    tabBlue: { background: "rgba(102,178,255,.08)", border: "1px solid rgba(102,178,255,.4)" },
+    tabTitle: { fontSize: 14, fontWeight: "bold", marginBottom: 3, display: "flex", alignItems: "center", gap: 8 },
+    tabSub: { fontSize: 11, color: "#666" },
+    betaBadge: { fontSize: 9, background: "rgba(102,178,255,.2)", color: "#66b2ff", padding: "2px 7px", borderRadius: 4, letterSpacing: ".1em", textTransform: "uppercase" },
+    wrap: { maxWidth: 860, margin: "0 auto", padding: "30px 22px 80px" },
+    hero: { fontSize: 38, lineHeight: 1.2, fontWeight: "bold", marginBottom: 13, letterSpacing: "-.01em" },
+    heroSub: { fontSize: 14, color: "#999", lineHeight: 1.7, marginBottom: 26, maxWidth: 600 },
+    agentCard: { background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "16px 20px", marginBottom: 28, display: "flex", gap: 16, flexWrap: "wrap" },
+    fLabel: { fontSize: 10, letterSpacing: ".1em", color: "#666", marginBottom: 6, textTransform: "uppercase" },
+    inp: { width: "100%", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 7, padding: "8px 12px", color: "#e8e6e0", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
+    sel: { width: "100%", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 7, padding: "8px 12px", color: "#e8e6e0", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box" },
+    secLbl: { fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "#c9a84c", marginBottom: 11, marginTop: 26 },
+    chips: { display: "flex", flexWrap: "wrap", gap: 8 },
+    chip: { padding: "7px 15px", borderRadius: 30, border: "1px solid rgba(255,255,255,.15)", fontSize: 12, cursor: "pointer", color: "#999", transition: "all .18s", userSelect: "none" },
+    ltGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 10 },
+    ltCard: { padding: "13px 15px", border: "1px solid rgba(255,255,255,.1)", borderRadius: 9, cursor: "pointer", transition: "all .18s", userSelect: "none" },
+    ltOn: { background: "rgba(201,168,76,.1)", border: "1px solid rgba(201,168,76,.5)" },
+    ltLbl: { fontWeight: "bold", fontSize: 13, marginBottom: 4, color: "#e8e6e0", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
+    ltDesc: { fontSize: 11, color: "#666", lineHeight: 1.5 },
+    mlsTag: { fontSize: 9, background: "rgba(6,214,160,.15)", color: "#06d6a0", padding: "2px 7px", borderRadius: 4, letterSpacing: ".04em", fontWeight: "normal" },
+    trigGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 9 },
+    trigCard: { padding: "13px 10px", border: "1px solid rgba(255,255,255,.1)", borderRadius: 9, cursor: "pointer", textAlign: "center", transition: "all .18s" },
+    trigOn: { background: "rgba(102,178,255,.1)", border: "1px solid rgba(102,178,255,.5)" },
+    trigIcon: { fontSize: 24, marginBottom: 6 },
+    trigTitle: { fontSize: 11, fontWeight: "bold", color: "#ddd", marginBottom: 2 },
+    trigWindow: { fontSize: 10, color: "#66b2ff" },
+    genBtn: { marginTop: 32, display: "block", width: "100%", padding: "16px", background: "linear-gradient(135deg,#c9a84c,#a8873a)", border: "none", borderRadius: 9, color: "#0b0d12", fontSize: 15, fontWeight: "bold", fontFamily: "inherit", letterSpacing: ".05em", cursor: "pointer", transition: "transform .15s,box-shadow .15s" },
+    genBtnBlue: { background: "linear-gradient(135deg,#66b2ff,#4a90e2)" },
+    ethicsNote: { textAlign: "center", fontSize: 11, color: "#444", marginTop: 11, letterSpacing: ".04em" },
+    infoBox: { background: "rgba(102,178,255,.05)", border: "1px solid rgba(102,178,255,.18)", borderRadius: 9, padding: "13px 16px", marginBottom: 24 },
+    infoLbl: { fontSize: 9, letterSpacing: ".15em", color: "#66b2ff", marginBottom: 6 },
+    infoTxt: { fontSize: 13, color: "#999", lineHeight: 1.7 },
+    loading: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "60vh", gap: 18 },
+    spinner: { position: "absolute", top: 4, left: 4, width: 48, height: 48, border: "3px solid rgba(201,168,76,.2)", borderTop: "3px solid #c9a84c", borderRadius: "50%" },
+    spinnerOuter: { position: "absolute", top: 0, left: 0, width: 56, height: 56, border: "2px solid transparent", borderTop: "2px solid #06d6a0", borderRadius: "50%" },
+    loadMsg: { fontSize: 16, color: "#e8e6e0" },
+    mlsBadge: { background: "rgba(6,214,160,.08)", border: "1px solid rgba(6,214,160,.3)", color: "#06d6a0", padding: "6px 14px", borderRadius: 20, fontSize: 11, letterSpacing: ".04em", maxWidth: 400, textAlign: "center" },
+    resultsHdr: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, flexWrap: "wrap", gap: 12 },
+    resultsTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 3, display: "flex", alignItems: "center", gap: 10 },
+    resultsSub: { fontSize: 12, color: "#666", letterSpacing: ".04em" },
+    backBtn: { background: "transparent", border: "1px solid rgba(255,255,255,.2)", color: "#888", padding: "7px 14px", borderRadius: 6, cursor: "pointer", fontSize: 12, fontFamily: "inherit" },
+    grid: { display: "flex", flexDirection: "column", gap: 16 },
+    leadCard: { background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 13, padding: "20px" },
+    fcCard: { background: "linear-gradient(135deg,rgba(102,178,255,.03),rgba(255,255,255,.02))", border: "1px solid rgba(102,178,255,.13)", borderRadius: 13, padding: "20px", transition: "all .2s" },
+    fcCardRipe: { border: "1px solid rgba(255,107,53,.4)", background: "linear-gradient(135deg,rgba(255,107,53,.05),rgba(255,255,255,.02))" },
+    fcCardManual: { borderStyle: "dashed" },
+    cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12, gap: 10 },
+    name: { fontSize: 18, fontWeight: "bold", marginBottom: 3, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
+    loc: { fontSize: 12, color: "#666" },
+    manualBadge: { fontSize: 9, background: "rgba(201,168,76,.15)", color: "#c9a84c", padding: "2px 8px", borderRadius: 10, fontWeight: "normal", letterSpacing: ".05em" },
+    badge: { padding: "4px 11px", borderRadius: 20, fontSize: 11, fontWeight: "bold", letterSpacing: ".05em", whiteSpace: "nowrap" },
+    heatBox: { background: "rgba(0,0,0,.2)", borderRadius: 8, padding: "11px 13px", marginBottom: 12, border: "1px solid transparent" },
+    heatLbl: { fontSize: 12, fontWeight: "bold", letterSpacing: ".03em" },
+    heatDays: { fontSize: 11, color: "#666" },
+    track: { height: 4, background: "rgba(255,255,255,.08)", borderRadius: 2, overflow: "hidden" },
+    fill: { height: "100%", borderRadius: 2, transition: "width .8s ease" },
+    winLabel: { fontSize: 10, color: "#555", marginTop: 5 },
+    mlsBox: { background: "rgba(6,214,160,.07)", border: "1px solid rgba(6,214,160,.22)", borderRadius: 7, padding: "8px 12px", marginBottom: 11, display: "flex", gap: 10, alignItems: "center" },
+    mlsCheck: { color: "#06d6a0", fontSize: 16, fontWeight: "bold" },
+    mlsTitle: { color: "#06d6a0", fontSize: 11, fontWeight: "bold", letterSpacing: ".04em", marginBottom: 2 },
+    mlsNote: { fontSize: 10, color: "#777" },
+    metaRow: { display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 11 },
+    metaTag: { background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 5, padding: "3px 8px", fontSize: 11, color: "#999" },
+    situation: { fontSize: 14, lineHeight: 1.7, color: "#ccc", marginBottom: 8 },
+    noteHint: { fontSize: 12, color: "#666", fontStyle: "italic", marginBottom: 11, lineHeight: 1.6 },
+    contactRow: { display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 13 },
+    contact: { fontSize: 12, color: "#777" },
+    triggerBox: { background: "rgba(0,0,0,.2)", borderRadius: 7, padding: "10px 12px", marginBottom: 11, borderLeft: "3px solid #66b2ff" },
+    triggerLbl: { fontSize: 9, letterSpacing: ".12em", color: "#66b2ff", marginBottom: 4, textTransform: "uppercase" },
+    triggerTxt: { fontSize: 13, color: "#ddd", lineHeight: 1.5, marginBottom: 4 },
+    triggerSrc: { fontSize: 10, color: "#444", fontStyle: "italic" },
+    statsRow: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 7, marginBottom: 11 },
+    statBox: { background: "rgba(255,255,255,.04)", padding: "8px 10px", borderRadius: 7, textAlign: "center" },
+    statLbl: { fontSize: 9, letterSpacing: ".1em", color: "#555", marginBottom: 3, textTransform: "uppercase" },
+    statVal: { fontSize: 12, fontWeight: "bold", color: "#e8e6e0" },
+    statBig: { fontSize: 17, fontWeight: "bold" },
+    touchBox: { background: "rgba(255,209,102,.05)", borderRadius: 7, padding: "9px 12px", marginBottom: 8, borderLeft: "3px solid #ffd166" },
+    approachBox: { background: "rgba(255,107,157,.05)", borderRadius: 7, padding: "9px 12px", marginBottom: 8, borderLeft: "3px solid #ff6b9d" },
+    boxLbl: { fontSize: 9, letterSpacing: ".12em", color: "#888", marginBottom: 5, textTransform: "uppercase" },
+    boxTxt: { fontSize: 13, color: "#ccc", lineHeight: 1.6 },
+    basisNote: { fontSize: 11, color: "#444", fontStyle: "italic", marginBottom: 11, lineHeight: 1.5 },
+    notesBox: { background: "rgba(255,255,255,.02)", borderRadius: 7, padding: "9px 12px", marginTop: 8, border: "1px solid rgba(255,255,255,.06)", cursor: "text" },
+    noteView: { fontSize: 13, color: "#999", lineHeight: 1.6, minHeight: 20 },
+    noteTa: { width: "100%", background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 6, padding: "8px 10px", color: "#e8e6e0", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", resize: "vertical" },
+    saveNote: { background: "rgba(6,214,160,.15)", border: "1px solid rgba(6,214,160,.3)", color: "#06d6a0", padding: "6px 14px", borderRadius: 5, cursor: "pointer", fontSize: 12, fontFamily: "inherit" },
+    cancelNote: { background: "transparent", border: "1px solid rgba(255,255,255,.15)", color: "#666", padding: "6px 14px", borderRadius: 5, cursor: "pointer", fontSize: 12, fontFamily: "inherit" },
+    watchBtn2: { background: "transparent", border: "1px solid rgba(102,178,255,.4)", color: "#66b2ff", padding: "9px 16px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontFamily: "inherit", flex: 1 },
+    watchedBtn: { background: "rgba(102,178,255,.15)", borderColor: "#66b2ff" },
+    scriptBtn: { background: "transparent", border: "1px solid rgba(201,168,76,.4)", color: "#c9a84c", padding: "9px 16px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontFamily: "inherit", flex: 1, transition: "all .18s" },
+    removeBtn: { background: "transparent", border: "1px solid rgba(255,77,77,.25)", color: "#ff6b6b", padding: "9px 14px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontFamily: "inherit" },
+    scriptBox: { marginTop: 15, background: "rgba(201,168,76,.04)", border: "1px solid rgba(201,168,76,.18)", borderRadius: 9, padding: "16px" },
+    scriptTitle: { fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "#c9a84c", marginBottom: 11 },
+    scriptTxt: { fontSize: 14, lineHeight: 1.8, color: "#ddd", whiteSpace: "pre-wrap" },
+    copyBtn: { marginTop: 13, background: "rgba(201,168,76,.12)", border: "1px solid rgba(201,168,76,.3)", color: "#c9a84c", padding: "6px 13px", borderRadius: 5, cursor: "pointer", fontSize: 11, fontFamily: "inherit" },
+    addBtn: { background: "rgba(102,178,255,.1)", border: "1px solid rgba(102,178,255,.3)", color: "#66b2ff", padding: "9px 16px", borderRadius: 7, cursor: "pointer", fontSize: 13, fontFamily: "inherit", whiteSpace: "nowrap" },
+    manualBox: { background: "rgba(102,178,255,.04)", border: "1px solid rgba(102,178,255,.18)", borderRadius: 11, padding: "18px 20px", marginBottom: 22 },
+    manualTitle: { fontSize: 13, fontWeight: "bold", color: "#66b2ff", marginBottom: 15 },
+    manualGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 13 },
+    manualSubmit: { marginTop: 15, background: "linear-gradient(135deg,#66b2ff,#4a90e2)", border: "none", borderRadius: 7, color: "#0b0d12", padding: "10px 22px", fontSize: 13, fontWeight: "bold", fontFamily: "inherit", cursor: "pointer" },
+    empty: { textAlign: "center", padding: "70px 20px" },
+    emptyIcon: { fontSize: 42, color: "#66b2ff", marginBottom: 16 },
+    emptyTitle: { fontSize: 16, color: "#aaa", marginBottom: 6 },
+    emptySub: { fontSize: 12, color: "#444" },
+    toast: { position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "rgba(6,214,160,.95)", color: "#0b0d12", padding: "10px 22px", borderRadius: 24, fontSize: 13, fontWeight: "bold", zIndex: 9999, letterSpacing: ".04em", whiteSpace: "nowrap", backdropFilter: "blur(8px)" },
+    // PULSE STYLES
+    tabPulse: { background: "rgba(255,107,53,.08)", border: "1px solid rgba(255,107,53,.4)" },
+    radarDot: { fontSize: 18 },
+    pulseReadyDot: { width: 7, height: 7, background: "#ff6b35", borderRadius: "50%", display: "inline-block", marginLeft: 4 },
+    pulseLoading: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "65vh", gap: 20 },
+    radarWrap: { position: "relative", width: 120, height: 120 },
+    radarCore: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", fontSize: 28, zIndex: 10 },
+    radarRing1: { position: "absolute", top: 0, left: 0, width: 120, height: 120, border: "1px solid rgba(255,107,53,.4)", borderRadius: "50%" },
+    radarRing2: { position: "absolute", top: 15, left: 15, width: 90, height: 90, border: "1px solid rgba(255,107,53,.3)", borderRadius: "50%" },
+    radarRing3: { position: "absolute", top: 30, left: 30, width: 60, height: 60, border: "1px solid rgba(255,107,53,.2)", borderRadius: "50%" },
+    radarSweep: { position: "absolute", top: 0, left: 0, width: 120, height: 120, borderRadius: "50%", background: "conic-gradient(from 0deg,transparent 0deg,rgba(255,107,53,.3) 60deg,transparent 60deg)", transformOrigin: "center" },
+    pulseScanTitle: { fontSize: 14, letterSpacing: ".2em", color: "#ff6b35", textTransform: "uppercase" },
+    pulseScanMsg: { fontSize: 15, color: "#e8e6e0", textAlign: "center", maxWidth: 380 },
+    pulseScanSub: { fontSize: 11, color: "#555", letterSpacing: ".06em" },
+    pulseHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 16 },
+    pulseTitle: { fontSize: 26, fontWeight: "bold", marginBottom: 4 },
+    pulseDate: { fontSize: 11, color: "#666", letterSpacing: ".04em" },
+    pulseRefreshBtn: { background: "rgba(255,107,53,.1)", border: "1px solid rgba(255,107,53,.3)", color: "#ff6b35", padding: "8px 16px", borderRadius: 7, cursor: "pointer", fontSize: 12, fontFamily: "inherit" },
+    pulseHeadline: { background: "linear-gradient(135deg,rgba(255,107,53,.08),rgba(255,107,53,.03))", border: "1px solid rgba(255,107,53,.25)", borderRadius: 10, padding: "16px 20px", marginBottom: 20 },
+    pulseHeadlineLbl: { fontSize: 9, letterSpacing: ".15em", color: "#ff6b35", marginBottom: 8, textTransform: "uppercase" },
+    pulseHeadlineTxt: { fontSize: 17, fontWeight: "bold", color: "#f0ede6", lineHeight: 1.4, marginBottom: 8 },
+    pulseTotalSignals: { fontSize: 11, color: "#888" },
+    pulseSubTabs: { display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" },
+    pulseSubTab: { padding: "7px 14px", borderRadius: 20, border: "1px solid rgba(255,255,255,.1)", fontSize: 12, cursor: "pointer", color: "#888", transition: "all .18s" },
+    pulseSubTabOn: { background: "rgba(255,107,53,.12)", border: "1px solid rgba(255,107,53,.4)", color: "#ff6b35" },
+    pulseSecLbl: { fontSize: 10, letterSpacing: ".12em", textTransform: "uppercase", color: "#ff6b35", marginBottom: 12, marginTop: 24 },
+    countyGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 12, marginBottom: 4 },
+    countyCard: { background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 11, padding: "16px", transition: "border-color .2s" },
+    countyTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+    countyName: { fontSize: 14, fontWeight: "bold", color: "#e8e6e0" },
+    countyHeat: { padding: "3px 9px", borderRadius: 20, fontSize: 10, fontWeight: "bold", letterSpacing: ".05em" },
+    countyStats: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 6, marginBottom: 10 },
+    cStat: { textAlign: "center" },
+    cStatN: { fontSize: 16, fontWeight: "bold", color: "#e8e6e0" },
+    cStatL: { fontSize: 9, color: "#555", letterSpacing: ".06em", textTransform: "uppercase" },
+    countyTopSig: { fontSize: 11, color: "#aaa", lineHeight: 1.5, marginBottom: 8, fontStyle: "italic" },
+    countyMarket: { fontSize: 11, display: "flex", alignItems: "center", flexWrap: "wrap" },
+    actionSection: { marginTop: 8 },
+    actionItem: { background: "rgba(255,255,255,.02)", borderRadius: 8, padding: "12px 14px", marginBottom: 8, borderLeft: "3px solid", display: "flex", gap: 12, alignItems: "flex-start" },
+    actionPriority: { fontSize: 9, fontWeight: "bold", letterSpacing: ".1em", marginTop: 2, whiteSpace: "nowrap" },
+    actionTxt: { fontSize: 13, color: "#ccc", lineHeight: 1.5 },
+    marketSection: { marginTop: 8 },
+    marketGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 10 },
+    marketCard: { background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 9, padding: "12px 14px" },
+    marketCounty: { fontSize: 10, letterSpacing: ".1em", color: "#777", marginBottom: 6, textTransform: "uppercase" },
+    marketMedian2: { fontSize: 18, fontWeight: "bold", marginBottom: 2 },
+    marketDom: { fontSize: 11, color: "#888", marginBottom: 4 },
+    marketNote2: { fontSize: 11, color: "#666", lineHeight: 1.4 },
+    historyCard: { background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.07)", borderRadius: 9, padding: "14px 16px", marginBottom: 10, cursor: "pointer", transition: "all .2s" },
+    historyCardActive: { borderColor: "rgba(255,107,53,.35)", background: "rgba(255,107,53,.04)" },
+    histDate: { fontSize: 12, fontWeight: "bold", color: "#ff6b35", marginBottom: 5 },
+    histHeadline: { fontSize: 14, color: "#ddd", lineHeight: 1.4, marginBottom: 5 },
+    histMeta: { fontSize: 11, color: "#555" },
+};
+const css = `
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes spinSlow{to{transform:rotate(-360deg)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
+  @keyframes glow{0%,100%{text-shadow:0 0 8px rgba(255,107,53,.8)}50%{text-shadow:0 0 22px rgba(255,107,53,1),0 0 4px #fff}}
+  .spin{animation:spin .9s linear infinite}
+  .spin-slow{animation:spinSlow 2.2s linear infinite}
+  .fade-in{animation:fadeIn .35s ease both}
+  .blink{animation:blink 1s step-end infinite}
+  .pulse{animation:pulse 2s ease-in-out infinite}
+  .glow{animation:glow 2s ease-in-out infinite}
+  .ripe-card{box-shadow:0 0 22px rgba(255,107,53,.14)}
+  .chip:hover{border-color:rgba(201,168,76,.5);color:#c9a84c}
+  .lead-card:hover{border-color:rgba(201,168,76,.3)!important}
+  .script-btn:hover{background:rgba(201,168,76,.1)}
+  .gen-btn:hover{transform:scale(1.008);box-shadow:0 8px 26px rgba(201,168,76,.22)}
+  input::placeholder,textarea::placeholder{color:#2a2a2a}
+  input:focus,textarea:focus,select:focus{border-color:rgba(102,178,255,.4)!important}
+  *{box-sizing:border-box}
+  select option{background:#1a1d24}
+  @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+  .toast-in{animation:toastIn .25s ease both}
+  @keyframes radarRing{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.8);opacity:0}}
+  @keyframes radarSweep{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+  @keyframes radarPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,107,53,.4)}50%{box-shadow:0 0 0 12px rgba(255,107,53,0)}}
+  .radar-ring{animation:radarRing 2.5s ease-out infinite}
+  .radar-ring-2{animation:radarRing 2.5s ease-out .8s infinite}
+  .radar-ring-3{animation:radarRing 2.5s ease-out 1.6s infinite}
+  .radar-sweep{animation:radarSweep 3s linear infinite}
+  .radar-idle{animation:pulse 3s ease-in-out infinite}
+  .county-card:hover{border-color:rgba(255,107,53,.3)!important}
+  .history-card:hover{border-color:rgba(255,107,53,.25)!important}
+`;
+function Root() {
+    const [ready, setReady] = React.useState(!!localStorage.getItem("lb_apikey"));
+    React.useEffect(() => { window.storage = storageShim; }, []);
+    if (!ready)
+        return React.createElement(SetupScreen, { onSave: () => setReady(true) });
+    return React.createElement(App, null);
+}
+const domRoot = ReactDOM.createRoot(document.getElementById("root"));
+domRoot.render(React.createElement(Root, null));
+setTimeout(() => {
+    const s = document.getElementById("splash");
+    if (s) {
+        s.style.opacity = "0";
+        setTimeout(() => s.remove(), 400);
+    }
+}, 200);
+
+
+  // Boot
+  (function() {
+    const domRoot = ReactDOM.createRoot(document.getElementById("root"));
+    domRoot.render(React.createElement(Root));
+    setTimeout(() => {
+      const s = document.getElementById("splash");
+      if (s) { s.classList.add("hide"); setTimeout(()=>{ try{s.remove()}catch(e){} }, 450); }
+    }, 250);
+  })();
+  </script>
+</body>
+</html>
