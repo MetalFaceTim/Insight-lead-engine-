@@ -570,12 +570,7 @@ Generate exactly 6 newSignals. Make everything hyper-local and realistic: refere
                     "\u2726 The Forecast ",
                     React.createElement("span", { style: S.betaBadge }, "predictive")),
                 React.createElement("div", { style: S.tabSub }, "Know who's selling before they do")),
-            React.createElement("div", { style: { ...S.tab, ...(tab === "pulse" ? S.tabPulse : {}) }, onClick: () => switchTab("pulse") },
-                React.createElement("div", { style: S.tabTitle },
-                    React.createElement("span", { style: { ...S.radarDot, ...(pulseLoading ? {} : {}) }, className: pulseLoading ? "" : "radar-idle" }, "\uD83D\uDCE1"),
-                    "Daily Pulse",
-                    pulseReport && !pulseLoading && React.createElement("span", { style: S.pulseReadyDot, className: "pulse" })),
-                React.createElement("div", { style: S.tabSub }, pulseLoading ? "Scanning counties..." : pulseReport ? `Updated ${pulseReport.generatedAt}` : "Morning county briefing")))),
+            )),
         showWatchlist && (React.createElement("div", { style: S.wrap, className: "fade-in" },
             React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 6 } },
                 React.createElement("div", null,
@@ -840,7 +835,7 @@ Generate exactly 6 newSignals. Make everything hyper-local and realistic: refere
                                 addToWatchlist(p); } }, isWatched(p.id) ? "★ In The Forecast" : "☆ Add to Forecast"),
                         React.createElement("button", { style: S.scriptBtn, onClick: () => { const same = activeScript === p.id; setActiveScript(same ? null : p.id); if (!same)
                                 generateScript(p, true); }, disabled: generatingFor === p.id, className: "script-btn" }, generatingFor === p.id ? "Writing..." : scripts[p.id] ? "Regenerate" : "✍️ Soft-Touch Outreach")),
-                    activeScript === p.id && (React.createElement(ScriptBox, { script: scripts[p.id] || streamText, streaming: generatingFor === p.id, bottomRef: bottomRef, foresight: true, bestContact: "Email" }))));
+                    activeScript === p.id && (React.createElement)));
             })))),
         !showWatchlist && tab === "pulse" && (React.createElement("div", { style: S.wrap, className: "fade-in" },
             pulseLoading && (React.createElement("div", { style: S.pulseLoading },
