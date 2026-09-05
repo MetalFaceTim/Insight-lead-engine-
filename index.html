@@ -254,9 +254,7 @@ function App() {
                 // Auto-generate if no report for today
                 const todayKey = new Date().toISOString().split("T")[0];
                 const existing = hist.find(h => h.dateKey === todayKey);
-                if (!existing) {
-                    setTimeout(() => generatePulse(true), 800);
-                }
+                // Auto-pulse disabled
             }
             catch { }
         })();
@@ -295,7 +293,7 @@ RULES:
 - Use hyper-local refs: El Dorado Hills Town Center, Folsom Historic District, Apple Roseville campus, Intel Folsom, Granite Bay lakefront, Cameron Park Lake, Gold Hill, Hwy 50/80 corridors, Sutter Health
 Return JSON array of 6 objects: id, name, type, county, city, pricePoint, situation, urgency("Hot"|"Warm"|"Cold"), bestContact("Phone"|"Text"|"Email"|"Door Knock"), phone, email, notes, mlsVerified(bool), mlsVerifiedNote(string). Only valid JSON.`;
         try {
-            const res = await fetch("/api/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 2500, messages: [{ role: "user", content: prompt }] }) });
+            const res = await fetch("/api/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1500, messages: [{ role: "user", content: prompt }] }) });
             const data = await res.json();
             setLeads(JSON.parse((data.content||[]).map(b => b.text || "").join("").replace(/```json|```/g, "").trim()));
             setStep("results");
@@ -324,7 +322,7 @@ TODAY: May 2026. ALL predictedWindow values must be future dates from today.
 IMPORTANT: Frame situations positively and with empathy. These are people in natural life transitions.
 Return JSON array of 8 with: id(fs_1..fs_8), name, county, city, triggerEvent, triggerDate("Month Year"), publicSource(court filing/LinkedIn/public record), predictedWindow(MUST be "Mon-Mon YYYY" format e.g. "Aug-Oct 2026"), probability(55-92), estimatedValue("$XXXk-$XXXk"), sensitivityLevel("High"|"Medium"|"Low"), recommendedFirstTouch, approachNote, statisticalBasis. Only valid JSON.`;
         try {
-            const res = await fetch("/api/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 4000, messages: [{ role: "user", content: prompt }] }) });
+            const res = await fetch("/api/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1500, messages: [{ role: "user", content: prompt }] }) });
             const data = await res.json();
             setFcProspects(JSON.parse((data.content||[]).map(b => b.text || "").join("").replace(/```json|```/g, "").trim()));
             setStep("results");
@@ -533,7 +531,7 @@ Generate a realistic morning briefing. Return ONLY valid JSON with this exact st
 
 Generate exactly 6 newSignals. Make everything hyper-local and realistic: reference real local employers (Apple Roseville, Intel Folsom, Sutter Health, UC Davis Medical), local landmarks (Folsom Lake, El Dorado Hills Town Center, Granite Bay), and specific court/record details. No markdown, only JSON.`;
         try {
-            const res = await fetch("/api/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 4000, messages: [{ role: "user", content: prompt }] }) });
+            const res = await fetch("/api/messages", { method: "POST", headers: apiHeaders(), body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 1500, messages: [{ role: "user", content: prompt }] }) });
             const data = await res.json();
             const report = JSON.parse((data.content||[]).map(b => b.text || "").join("").replace(/```json|```/g, "").trim());
             report.generatedAt = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
