@@ -73,7 +73,6 @@ const storageShim = {
 function apiHeaders() {
   const key = localStorage.getItem("lb_apikey") || "";
   return { "Content-Type": "application/json", "x-api-key": key };
-};
 }
 function SetupScreen({ onSave }) {
     const [val, setVal] = React.useState("");
